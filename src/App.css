@@ -81,22 +81,3 @@
   fill: none;
 }
 
-/* Visualizer custom styles */
-.visualizer-overlay {
-  pointer-events: none;
-}
-
-.visualizer-hud {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(1000%); }
-}
-
-.animate-scanline {
-  animation: scanline 8s linear infinite;
-}
-

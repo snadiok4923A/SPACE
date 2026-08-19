@@ -2,9 +2,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import * as d3 from 'd3';
 import { 
     Headphones, Search, Menu, X, Music, Heart, Shuffle, 
-    SkipBack, Play, Pause, SkipForward, Repeat, Mic2, 
-    ListMusic, Volume2, VolumeX, Copy, Globe, RotateCcw, Check, Sparkles,
-    Activity, Radio, Waves, Zap, Sliders, ChevronRight, Disc, Eye
+    SkipBack, Play, Pause, SkipForward, Repeat, 
+    ListMusic, Volume2, VolumeX, Copy, Globe, RotateCcw, Check, Sparkles
 } from 'lucide-react';
 import "./App.css";
 
@@ -72,62 +71,15 @@ const musicData = {
     ]
 };
 
-// --- Visualizer Preset Configurations ---
-const VISUALIZER_PRESETS = [
-    {
-        id: 'constellation',
-        name: 'Cosmic Constellation',
-        icon: Globe,
-        desc: 'Interactive D3 force galaxy map with orbiting star systems',
-        badge: 'Galaxy',
-        color: '#a855f7'
-    },
-    {
-        id: 'radar',
-        name: 'Sonic Radial Radar',
-        icon: Radio,
-        desc: 'Pulsating circular frequency spectrum and harmonic resonance rings',
-        badge: 'Radar',
-        color: '#38bdf8'
-    },
-    {
-        id: 'warp',
-        name: 'Hyperspace Warp',
-        icon: Zap,
-        desc: 'High-speed lightspeed starfield tunnel reacting to track BPM',
-        badge: 'Warp',
-        color: '#ec4899'
-    },
-    {
-        id: 'grid',
-        name: 'Synthwave Cyber Grid',
-        icon: Activity,
-        desc: 'Neon 3D horizon with audio-reactive spectrum equalizer towers',
-        badge: 'Cyber',
-        color: '#f59e0b'
-    },
-    {
-        id: 'vortex',
-        name: 'Supernova Vortex',
-        icon: Waves,
-        desc: 'Swirling gravitational stardust vortex and flare bursts',
-        badge: 'Vortex',
-        color: '#10b981'
-    }
-];
-
-// --- Web Audio API Synthesizer with Real-time Analyser ---
+// --- Web Audio API Synthesizer ---
 class WebAudioSynth {
     constructor() {
         this.ctx = null;
         this.masterGain = null;
-        this.analyser = null;
         this.timer = null;
         this.isPlaying = false;
         this.noteIndex = 0;
         this.volume = 0.7;
-        this.freqData = new Uint8Array(64);
-        this.timeData = new Uint8Array(64);
     }
 
     init() {
@@ -135,15 +87,9 @@ class WebAudioSynth {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             if (AudioCtx) {
                 this.ctx = new AudioCtx();
-                this.analyser = this.ctx.createAnalyser();
-                this.analyser.fftSize = 128;
-                this.analyser.smoothingTimeConstant = 0.82;
-                
                 this.masterGain = this.ctx.createGain();
                 this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
-                
-                this.masterGain.connect(this.analyser);
-                this.analyser.connect(this.ctx.destination);
+                this.masterGain.connect(this.ctx.destination);
             }
         }
         if (this.ctx && this.ctx.state === 'suspended') {
@@ -227,42 +173,6 @@ class WebAudioSynth {
             this.timer = null;
         }
     }
-
-    getAudioData() {
-        if (this.analyser && this.isPlaying) {
-            if (this.freqData.length !== this.analyser.frequencyBinCount) {
-                this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
-                this.timeData = new Uint8Array(this.analyser.frequencyBinCount);
-            }
-            this.analyser.getByteFrequencyData(this.freqData);
-            this.analyser.getByteTimeDomainData(this.timeData);
-            
-            let sum = 0;
-            let bassSum = 0;
-            let midSum = 0;
-            let trebleSum = 0;
-            const len = this.freqData.length;
-            const quarter = Math.floor(len / 4);
-            
-            for (let i = 0; i < len; i++) {
-                const val = this.freqData[i];
-                sum += val;
-                if (i < quarter) bassSum += val;
-                else if (i < quarter * 3) midSum += val;
-                else trebleSum += val;
-            }
-            
-            return {
-                freq: this.freqData,
-                time: this.timeData,
-                avg: sum / (len || 1),
-                bass: bassSum / (quarter || 1),
-                mid: midSum / (quarter * 2 || 1),
-                treble: trebleSum / (quarter || 1)
-            };
-        }
-        return { freq: null, time: null, avg: 0, bass: 0, mid: 0, treble: 0 };
-    }
 }
 
 const synthInstance = new WebAudioSynth();
@@ -278,345 +188,6 @@ const parseDuration = (durStr) => {
     if (!durStr) return 180;
     const parts = durStr.split(':');
     return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-};
-
-// --- High Performance Audio-Reactive Space Visualizer Canvas Component ---
-const SpaceVisualizer = ({ preset, isPlaying, currentTrack, progressPercent }) => {
-    const canvasRef = useRef(null);
-
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        let animationFrameId;
-        let width = canvas.width = window.innerWidth;
-        let height = canvas.height = window.innerHeight;
-
-        const handleResize = () => {
-            if (!canvas) return;
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        };
-        window.addEventListener('resize', handleResize);
-
-        // Pre-initialize particles for Warp preset
-        const warpStars = Array.from({ length: 420 }, () => ({
-            x: (Math.random() - 0.5) * width * 2,
-            y: (Math.random() - 0.5) * height * 2,
-            z: Math.random() * 1000 + 1,
-            color: Math.random() > 0.4 ? '#a855f7' : (Math.random() > 0.5 ? '#38bdf8' : '#ec4899')
-        }));
-
-        // Pre-initialize particles for Vortex preset
-        const vortexParticles = Array.from({ length: 360 }, (_, i) => ({
-            angle: (i / 360) * Math.PI * 2 + Math.random() * 0.5,
-            radius: Math.random() * Math.min(width, height) * 0.45 + 20,
-            speed: (Math.random() * 0.006 + 0.003) * (Math.random() > 0.5 ? 1 : 1),
-            size: Math.random() * 2.5 + 0.8,
-            hueOffset: Math.random() * 60
-        }));
-
-        // Synthetic time trackers
-        let tick = 0;
-        let radarAngle = 0;
-        let gridScroll = 0;
-
-        const render = () => {
-            tick++;
-            const audio = synthInstance.getAudioData();
-            const intensity = isPlaying ? Math.max(0.2, audio.avg / 128) : 0.15;
-            const bassBoost = isPlaying ? Math.max(1, (audio.bass || 0) / 70) : 1;
-            const cx = width / 2;
-            const cy = height / 2;
-
-            // Genre accent colors
-            const trackColor = currentTrack?.color || '#a855f7';
-            const genre = currentTrack?.genre || 'Space';
-
-            if (preset === 'constellation') {
-                // Subtle ambient stardust overlay for Galaxy Constellation mode
-                ctx.clearRect(0, 0, width, height);
-                
-                if (isPlaying) {
-                    const ambientRadius = 140 + Math.sin(tick * 0.04) * 20 + intensity * 60;
-                    const grad = ctx.createRadialGradient(cx, cy, 10, cx, cy, ambientRadius * 1.6);
-                    grad.addColorStop(0, `${trackColor}18`);
-                    grad.addColorStop(0.5, `${trackColor}08`);
-                    grad.addColorStop(1, 'transparent');
-                    ctx.fillStyle = grad;
-                    ctx.beginPath();
-                    ctx.arc(cx, cy, ambientRadius * 1.6, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            } 
-            else if (preset === 'radar') {
-                // Sonic Radial Radar
-                ctx.fillStyle = 'rgba(5, 5, 12, 0.28)';
-                ctx.fillRect(0, 0, width, height);
-
-                const baseR = Math.min(width, height) * 0.22;
-                radarAngle += isPlaying ? 0.028 * bassBoost : 0.015;
-
-                // Glowing background pulse
-                const radGrad = ctx.createRadialGradient(cx, cy, baseR * 0.2, cx, cy, baseR * 1.8);
-                radGrad.addColorStop(0, isPlaying ? 'rgba(56, 189, 248, 0.16)' : 'rgba(56, 189, 248, 0.05)');
-                radGrad.addColorStop(0.6, 'rgba(168, 85, 247, 0.08)');
-                radGrad.addColorStop(1, 'transparent');
-                ctx.fillStyle = radGrad;
-                ctx.beginPath();
-                ctx.arc(cx, cy, baseR * 1.8, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Concentric Range Rings
-                [0.4, 0.7, 1.0, 1.3].forEach((scale, idx) => {
-                    const r = baseR * scale + (isPlaying ? Math.sin(tick * 0.05 + idx) * (intensity * 12) : 0);
-                    ctx.strokeStyle = idx === 2 ? 'rgba(56, 189, 248, 0.5)' : 'rgba(255, 255, 255, 0.12)';
-                    ctx.lineWidth = idx === 2 ? 1.5 : 1;
-                    ctx.setLineDash(idx % 2 === 1 ? [4, 6] : []);
-                    ctx.beginPath();
-                    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                    ctx.stroke();
-                });
-                ctx.setLineDash([]);
-
-                // Rotating Radar Sweep
-                ctx.save();
-                ctx.translate(cx, cy);
-                ctx.rotate(radarAngle);
-                const sweepGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, baseR * 1.4);
-                sweepGrad.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
-                sweepGrad.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
-                ctx.fillStyle = sweepGrad;
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                ctx.arc(0, 0, baseR * 1.4, 0, Math.PI * 0.35);
-                ctx.closePath();
-                ctx.fill();
-                ctx.restore();
-
-                // 360-Degree Radial Frequency Spectrum
-                const barsCount = 64;
-                const freqArr = audio.freq;
-                for (let i = 0; i < barsCount; i++) {
-                    const theta = (i / barsCount) * Math.PI * 2;
-                    const val = freqArr ? (freqArr[i % freqArr.length] || 0) : (Math.sin(i * 0.4 + tick * 0.1) * 30 + 40);
-                    const barHeight = (val / 255) * (baseR * 0.75) * (isPlaying ? 1.4 : 0.4);
-
-                    const x1 = cx + Math.cos(theta) * baseR;
-                    const y1 = cy + Math.sin(theta) * baseR;
-                    const x2 = cx + Math.cos(theta) * (baseR + Math.max(4, barHeight));
-                    const y2 = cy + Math.sin(theta) * (baseR + Math.max(4, barHeight));
-
-                    ctx.strokeStyle = `hsl(${(i * 5 + tick * 2) % 360}, 85%, 65%)`;
-                    ctx.lineWidth = 2.5;
-                    ctx.beginPath();
-                    ctx.moveTo(x1, y1);
-                    ctx.lineTo(x2, y2);
-                    ctx.stroke();
-                }
-
-                // Central Sonic Core
-                const coreR = 24 + intensity * 26;
-                ctx.fillStyle = '#ffffff';
-                ctx.shadowColor = '#38bdf8';
-                ctx.shadowBlur = 24;
-                ctx.beginPath();
-                ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.shadowBlur = 0;
-            }
-            else if (preset === 'warp') {
-                // Hyperspace Warp Tunnel
-                ctx.fillStyle = 'rgba(3, 3, 8, 0.32)';
-                ctx.fillRect(0, 0, width, height);
-
-                const bpm = currentTrack?.bpm || 110;
-                const speed = (isPlaying ? (bpm * 0.12 + intensity * 28) : 3.5);
-
-                for (let i = 0; i < warpStars.length; i++) {
-                    const star = warpStars[i];
-                    star.z -= speed;
-                    if (star.z <= 0) {
-                        star.z = 1000;
-                        star.x = (Math.random() - 0.5) * width * 2;
-                        star.y = (Math.random() - 0.5) * height * 2;
-                    }
-
-                    const k = 280 / star.z;
-                    const px = star.x * k + cx;
-                    const py = star.y * k + cy;
-
-                    if (px >= 0 && px <= width && py >= 0 && py <= height) {
-                        const prevK = 280 / (star.z + speed * 2.2);
-                        const prevPx = star.x * prevK + cx;
-                        const prevPy = star.y * prevK + cy;
-                        const size = Math.max(0.8, (1 - star.z / 1000) * 3.5 * bassBoost);
-
-                        ctx.strokeStyle = star.color;
-                        ctx.lineWidth = size;
-                        ctx.beginPath();
-                        ctx.moveTo(prevPx, prevPy);
-                        ctx.lineTo(px, py);
-                        ctx.stroke();
-                    }
-                }
-
-                // Warp central singularity flare
-                if (isPlaying) {
-                    const warpFlareR = 40 + intensity * 60;
-                    const flareGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, warpFlareR);
-                    flareGrad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
-                    flareGrad.addColorStop(0.3, 'rgba(236, 72, 153, 0.4)');
-                    flareGrad.addColorStop(1, 'transparent');
-                    ctx.fillStyle = flareGrad;
-                    ctx.beginPath();
-                    ctx.arc(cx, cy, warpFlareR, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-            else if (preset === 'grid') {
-                // Synthwave Cyber Grid
-                ctx.fillStyle = 'rgba(5, 5, 14, 0.35)';
-                ctx.fillRect(0, 0, width, height);
-
-                const horizonY = height * 0.54;
-                gridScroll = (gridScroll + (isPlaying ? 2.5 + intensity * 4 : 1.2)) % 40;
-
-                // Glowing Synthwave Sun
-                const sunRadius = Math.min(width, height) * 0.18;
-                const sunGrad = ctx.createLinearGradient(cx, horizonY - sunRadius * 1.8, cx, horizonY);
-                sunGrad.addColorStop(0, '#fef08a');
-                sunGrad.addColorStop(0.4, '#f43f5e');
-                sunGrad.addColorStop(1, '#8b5cf6');
-                ctx.fillStyle = sunGrad;
-                ctx.shadowColor = '#f43f5e';
-                ctx.shadowBlur = 35;
-                ctx.beginPath();
-                ctx.arc(cx, horizonY, sunRadius, Math.PI, 0, false);
-                ctx.fill();
-                ctx.shadowBlur = 0;
-
-                // Sun horizontal blinds/scanline slits
-                ctx.fillStyle = '#05050e';
-                for (let y = horizonY - sunRadius * 0.85; y < horizonY; y += 7) {
-                    const slitHeight = ((y - (horizonY - sunRadius)) / sunRadius) * 4.2;
-                    ctx.fillRect(cx - sunRadius * 1.1, y, sunRadius * 2.2, slitHeight);
-                }
-
-                // Spectrum Equalizer Towers along Horizon
-                const towers = 36;
-                const towerWidth = (width * 0.75) / towers;
-                const startX = width * 0.125;
-                const freqArr = audio.freq;
-
-                for (let i = 0; i < towers; i++) {
-                    const rawVal = freqArr ? (freqArr[i % freqArr.length] || 0) : (Math.sin(i * 0.5 + tick * 0.08) * 40 + 50);
-                    const towerH = (rawVal / 255) * (height * 0.28) * (isPlaying ? 1.3 : 0.3);
-                    const tx = startX + i * towerWidth;
-
-                    // Neon bar gradient
-                    const barGrad = ctx.createLinearGradient(tx, horizonY - towerH, tx, horizonY);
-                    barGrad.addColorStop(0, '#38bdf8');
-                    barGrad.addColorStop(0.5, '#ec4899');
-                    barGrad.addColorStop(1, '#a855f7');
-                    ctx.fillStyle = barGrad;
-                    ctx.fillRect(tx + 2, horizonY - towerH, towerWidth - 4, towerH);
-
-                    // Floor reflection
-                    const reflGrad = ctx.createLinearGradient(tx, horizonY, tx, horizonY + towerH * 0.4);
-                    reflGrad.addColorStop(0, 'rgba(236, 72, 153, 0.3)');
-                    reflGrad.addColorStop(1, 'transparent');
-                    ctx.fillStyle = reflGrad;
-                    ctx.fillRect(tx + 2, horizonY, towerWidth - 4, towerH * 0.4);
-                }
-
-                // 3D Grid Perspective Floor
-                ctx.strokeStyle = 'rgba(236, 72, 153, 0.45)';
-                ctx.lineWidth = 1.2;
-
-                // Horizontal scrolling lines
-                for (let d = 1; d < 18; d++) {
-                    const norm = Math.pow(d / 18, 2.2);
-                    const lineY = horizonY + norm * (height - horizonY) + (gridScroll * 0.3);
-                    if (lineY > horizonY && lineY <= height) {
-                        ctx.beginPath();
-                        ctx.moveTo(0, lineY);
-                        ctx.lineTo(width, lineY);
-                        ctx.stroke();
-                    }
-                }
-
-                // Converging vertical lines
-                const gridColumns = 24;
-                for (let i = -gridColumns; i <= gridColumns; i++) {
-                    const bottomX = cx + (i * (width / 14));
-                    ctx.beginPath();
-                    ctx.moveTo(cx, horizonY);
-                    ctx.lineTo(bottomX, height);
-                    ctx.stroke();
-                }
-            }
-            else if (preset === 'vortex') {
-                // Supernova Particle Vortex
-                ctx.fillStyle = 'rgba(4, 4, 10, 0.26)';
-                ctx.fillRect(0, 0, width, height);
-
-                const vortexSpeed = isPlaying ? 0.008 + intensity * 0.02 : 0.004;
-
-                vortexParticles.forEach((p, idx) => {
-                    p.angle += p.speed * (isPlaying ? 1.5 + intensity * 2 : 1);
-                    p.radius -= isPlaying ? 0.35 + intensity * 0.8 : 0.2;
-
-                    if (p.radius < 15) {
-                        p.radius = Math.min(width, height) * 0.45;
-                        p.angle = Math.random() * Math.PI * 2;
-                    }
-
-                    const px = cx + Math.cos(p.angle) * p.radius;
-                    const py = cy + Math.sin(p.angle) * p.radius;
-                    const pSize = p.size * (1 + intensity * 1.5);
-
-                    ctx.fillStyle = `hsl(${(p.hueOffset + tick * 1.5 + (idx % 80)) % 360}, 90%, 65%)`;
-                    ctx.shadowColor = '#ec4899';
-                    ctx.shadowBlur = isPlaying ? 10 : 2;
-                    ctx.beginPath();
-                    ctx.arc(px, py, pSize, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-                ctx.shadowBlur = 0;
-
-                // Central Supernova Singularity
-                const singR = 20 + intensity * 35;
-                const singGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, singR * 2.2);
-                singGrad.addColorStop(0, '#ffffff');
-                singGrad.addColorStop(0.3, '#10b981');
-                singGrad.addColorStop(0.7, '#3b82f6');
-                singGrad.addColorStop(1, 'transparent');
-                ctx.fillStyle = singGrad;
-                ctx.beginPath();
-                ctx.arc(cx, cy, singR * 2.2, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            animationFrameId = requestAnimationFrame(render);
-        };
-
-        animationFrameId = requestAnimationFrame(render);
-
-        return () => {
-            cancelAnimationFrame(animationFrameId);
-            window.removeEventListener('resize', handleResize);
-        };
-    }, [preset, isPlaying, currentTrack, progressPercent]);
-
-    return (
-        <canvas 
-            ref={canvasRef} 
-            className="absolute inset-0 z-0 pointer-events-none w-full h-full"
-        />
-    );
 };
 
 // --- D3 Music Constellation Universe Graph Component ---
@@ -1076,11 +647,6 @@ export default function App() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [explodingNodeId, setExplodingNodeId] = useState(null);
 
-    // Visualizer preset state
-    const [visualizerPreset, setVisualizerPreset] = useState('constellation');
-    const [isPresetMenuOpen, setIsPresetMenuOpen] = useState(false);
-    const presetMenuRef = useRef(null);
-
     // Available songs
     const songNodes = useMemo(() => musicData.nodes.filter(n => n.group === 'song'), []);
 
@@ -1113,21 +679,6 @@ export default function App() {
             synthInstance.stop();
         };
     }, [isPlaying, currentTrack]);
-
-    // Close preset menu on click outside
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (presetMenuRef.current && !presetMenuRef.current.contains(e.target)) {
-                setIsPresetMenuOpen(false);
-            }
-        };
-        if (isPresetMenuOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isPresetMenuOpen]);
 
     const playTrack = useCallback((track) => {
         setCurrentTrack(track);
@@ -1297,17 +848,6 @@ export default function App() {
         else setRepeatMode('off');
     };
 
-    // Cycle through presets sequentially
-    const handleCyclePreset = () => {
-        const currentIndex = VISUALIZER_PRESETS.findIndex(p => p.id === visualizerPreset);
-        const nextIndex = (currentIndex + 1) % VISUALIZER_PRESETS.length;
-        setVisualizerPreset(VISUALIZER_PRESETS[nextIndex].id);
-    };
-
-    const currentPresetObj = useMemo(() => {
-        return VISUALIZER_PRESETS.find(p => p.id === visualizerPreset) || VISUALIZER_PRESETS[0];
-    }, [visualizerPreset]);
-
     const progressPercent = totalSeconds > 0 ? (currentSeconds / totalSeconds) * 100 : 0;
     const connectedSongs = useMemo(() => {
         if (!selectedNode || selectedNode.group === 'song') return [];
@@ -1321,28 +861,18 @@ export default function App() {
         <div className="h-screen w-screen flex flex-col font-sans relative text-sm sm:text-base bg-[#05050A] text-slate-200 overflow-hidden select-none">
             
             <div className="stars-bg"></div>
-
-            {/* Audio-Reactive Space Visualizer Canvas Engine */}
-            <SpaceVisualizer 
-                preset={visualizerPreset} 
-                isPlaying={isPlaying} 
-                currentTrack={currentTrack} 
-                progressPercent={progressPercent} 
-            />
             
             {/* Main Interactive D3 Graph Component */}
-            <div className={`transition-opacity duration-700 ${visualizerPreset === 'constellation' ? 'opacity-100 pointer-events-auto' : 'opacity-25 pointer-events-none'}`}>
-                <MusicUniverse 
-                    data={musicData} 
-                    onNodeClick={handleNodeSelect} 
-                    activeNodeId={currentTrack?.id} 
-                    searchQuery={searchQuery}
-                    resetTrigger={resetViewTrigger}
-                    progressPercent={progressPercent}
-                    isPlaying={isPlaying}
-                    explodingNodeId={explodingNodeId}
-                />
-            </div>
+            <MusicUniverse 
+                data={musicData} 
+                onNodeClick={handleNodeSelect} 
+                activeNodeId={currentTrack?.id} 
+                searchQuery={searchQuery}
+                resetTrigger={resetViewTrigger}
+                progressPercent={progressPercent}
+                isPlaying={isPlaying}
+                explodingNodeId={explodingNodeId}
+            />
 
             {/* Top Navigation */}
             <nav className="glass-panel w-full px-4 sm:px-6 py-3 flex justify-between items-center z-10 absolute top-0 left-0 border-b border-white/10 shadow-lg">
@@ -1360,19 +890,6 @@ export default function App() {
                 
                 {/* Search and Quick Controls */}
                 <div className="flex items-center gap-3">
-                    {/* Visualizer Preset Quick Badge in Header */}
-                    <button
-                        onClick={handleCyclePreset}
-                        title="Click to cycle visualizer presets"
-                        className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-300 hover:text-white transition-all shadow-sm group"
-                    >
-                        <currentPresetObj.icon className="w-3.5 h-3.5 text-purple-400 group-hover:rotate-12 transition-transform" />
-                        <span className="font-medium">{currentPresetObj.name}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-mono">
-                            {currentPresetObj.badge}
-                        </span>
-                    </button>
-
                     <div className="relative group">
                         <div className="flex items-center bg-[#0A0A14]/80 border border-white/10 rounded-full py-1.5 px-3 text-sm text-white focus-within:border-purple-500/80 transition-colors w-48 sm:w-64 shadow-inner">
                             <Search className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0" />
@@ -1711,97 +1228,6 @@ export default function App() {
 
                 {/* Extra Controls */}
                 <div className="w-1/3 flex justify-end items-center gap-3 sm:gap-4 text-slate-400">
-                    
-                    {/* Visualizer Preset Button & Popover */}
-                    <div className="relative" ref={presetMenuRef}>
-                        <button 
-                            title={`Visualizer Preset: ${currentPresetObj.name}`}
-                            onClick={() => setIsPresetMenuOpen(prev => !prev)}
-                            className={`transition-all p-2 rounded-xl relative flex items-center gap-1.5 ${
-                                isPresetMenuOpen 
-                                    ? 'text-purple-300 bg-purple-500/20 ring-1 ring-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]' 
-                                    : 'hover:text-white hover:bg-white/10 text-slate-300'
-                            }`}
-                        >
-                            <currentPresetObj.icon className="w-4 h-4 text-purple-400 animate-pulse" />
-                            <span className="hidden xl:inline text-xs font-semibold text-white/90">{currentPresetObj.badge}</span>
-                            <span className="w-2 h-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 animate-ping absolute -top-0.5 -right-0.5"></span>
-                            <span className="w-2 h-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 absolute -top-0.5 -right-0.5"></span>
-                        </button>
-
-                        {/* Preset Menu Popover Modal */}
-                        {isPresetMenuOpen && (
-                            <div className="absolute bottom-full right-0 mb-3 w-80 bg-[#0C0C1A]/95 border border-white/15 rounded-3xl p-3.5 shadow-[0_-10px_40px_rgba(0,0,0,0.85)] backdrop-blur-2xl z-50 animate-in fade-in slide-in-from-bottom-3 duration-200">
-                                <div className="flex items-center justify-between px-2 py-1 mb-2 border-b border-white/10 pb-2">
-                                    <div className="flex items-center gap-2">
-                                        <Activity className="w-4 h-4 text-purple-400" />
-                                        <span className="text-xs uppercase font-bold text-slate-200 tracking-wider">Visualizer Presets</span>
-                                    </div>
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-mono font-medium">
-                                        {VISUALIZER_PRESETS.length} Modes
-                                    </span>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    {VISUALIZER_PRESETS.map((p) => {
-                                        const IconComponent = p.icon;
-                                        const isActive = visualizerPreset === p.id;
-                                        return (
-                                            <button
-                                                key={p.id}
-                                                onClick={() => {
-                                                    setVisualizerPreset(p.id);
-                                                    setIsPresetMenuOpen(false);
-                                                }}
-                                                className={`w-full text-left p-2.5 rounded-2xl flex items-center gap-3 transition-all group ${
-                                                    isActive 
-                                                        ? 'bg-gradient-to-r from-purple-900/60 to-pink-900/40 border border-purple-500/50 shadow-md' 
-                                                        : 'hover:bg-white/5 border border-transparent'
-                                                }`}
-                                            >
-                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                                                    isActive 
-                                                        ? 'bg-purple-500 text-white shadow-[0_0_12px_rgba(168,85,247,0.7)]' 
-                                                        : 'bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-purple-300'
-                                                }`}>
-                                                    <IconComponent className="w-4 h-4" />
-                                                </div>
-
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center justify-between">
-                                                        <p className={`text-xs font-semibold truncate ${isActive ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
-                                                            {p.name}
-                                                        </p>
-                                                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300 font-mono ml-1">
-                                                            {p.badge}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                                                        {p.desc}
-                                                    </p>
-                                                </div>
-
-                                                {isActive && (
-                                                    <div className="w-2 h-2 rounded-full bg-pink-500 shadow-[0_0_8px_#ec4899]"></div>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400 px-2">
-                                    <span>Tip: Click header badge to cycle</span>
-                                    <button 
-                                        onClick={handleCyclePreset}
-                                        className="text-purple-400 hover:text-purple-300 font-semibold transition"
-                                    >
-                                        Next Mode &rarr;
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
                     <button 
                         title="Star Queue" 
                         onClick={() => selectedNode ? setSelectedNode(null) : setSelectedNode(currentTrack || songNodes[0])}
