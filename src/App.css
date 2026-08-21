@@ -14,6 +14,9 @@
   pointer-events: none;
 }
 
+
+
+
 .glass-panel {
   background: rgba(15, 15, 25, 0.75);
   backdrop-filter: blur(16px);
@@ -49,6 +52,9 @@
     opacity: 0;
   }
 }
+
+
+
 
 .node-pulse-ring {
   animation: ring-glow 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
